@@ -48,7 +48,7 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 }
 
 // Admin email - configure this for your deployment
-$admin_email = 'info@luxuryhotel.com';
+$admin_email = 'hello@altair-attic.com';
 
 $subject = 'New Booking Request - ' . $room_type . ' - ' . $name;
 

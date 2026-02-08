@@ -10,7 +10,7 @@
 
 ## Overview
 
-The **Cappa Luxury Hotel Website** is a web-based platform designed for hotels, resorts, lodges, and short-stay accommodations to professionally present their brand, showcase rooms and facilities, accept booking requests, send reservation notifications via email, display galleries, publish hotel news, and provide location access through interactive maps.
+The **Max Luxury Hotel Website** is a web-based platform designed for hotels, resorts, lodges, and short-stay accommodations to professionally present their brand, showcase rooms and facilities, accept booking requests, send reservation notifications via email, display galleries, publish hotel news, and provide location access through interactive maps.
 
 The platform will be developed using **HTML, CSS, and Vanilla JavaScript**, with **PHP used only for server-side email handling**.
 

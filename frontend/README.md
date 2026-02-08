@@ -53,7 +53,7 @@ php -S localhost:8000
 
 Then visit http://localhost:8000
 
-Configure the admin email in `api/send-booking.php` and `api/send-contact.php` (default: info@luxuryhotel.com).
+Configure the admin email in `api/send-booking.php` and `api/send-contact.php` (default: hello@altair-attic.com).
 
 ## Features
 

@@ -134,7 +134,7 @@
             showMessage(
               $messageEl,
               result.message ||
-                "Sorry, something went wrong. Please try again or call us at +234 812 345 6789.",
+                "Sorry, something went wrong. Please try again or call us at +2347077195098.",
               true,
             );
           }
@@ -142,7 +142,7 @@
         .catch(function (err) {
           showMessage(
             $messageEl,
-            "Unable to submit booking. Please check your connection or call us at +234 812 345 6789.",
+            "Unable to submit booking. Please check your connection or call us at +2347077195098.",
             true,
           );
         })
