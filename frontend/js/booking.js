@@ -71,27 +71,98 @@
 
     var messageEl = document.getElementById("booking-message");
     var submitBtn = document.getElementById("booking-submit");
+    var roomSelect = document.getElementById("booking-room");
+
+    // Fetch rooms and populate dropdown
+    if (roomSelect) {
+      fetch('https://demo.altairattic.net/hotel-two/api/rooms')
+        .then(response => response.json())
+        .then(data => {
+          const rooms = Array.isArray(data) ? data : (data.data && Array.isArray(data.data) ? data.data : []);
+
+          if (rooms.length > 0) {
+            // Clear existing options, keep the first one (placeholder)
+            roomSelect.innerHTML = '<option value="">Select room type</option>';
+
+            rooms.forEach(room => {
+              const option = document.createElement('option');
+              option.value = room.id;
+
+              const displayPrice = room.price_per_night
+                ? ` - ₦${Number(room.price_per_night).toLocaleString()}/night`
+                : '';
+
+              const displayName = room.room_type || room.name || `Room ${room.room_number}`;
+
+              option.textContent = `${displayName}${displayPrice}`;
+              roomSelect.appendChild(option);
+            });
+
+            // Check for room_id in URL and select it
+            var urlParams = new URLSearchParams(window.location.search);
+            var urlRoomId = urlParams.get('room_id');
+            if (urlRoomId) {
+              roomSelect.value = urlRoomId;
+              // Trigger change event for Select2 or other libraries if needed
+              $(roomSelect).trigger('change');
+            }
+          }
+        })
+        .catch(console.error);
+    }
 
     form.addEventListener("submit", function (e) {
       e.preventDefault();
 
       var formData = new FormData(form);
+
+      // Helper to format date to YYYY-MM-DD
+      function toIsoDate(dateStr) {
+        if (!dateStr) return null;
+        // If it's already YYYY-MM-DD, just return it
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+
+        var date = parseDate(dateStr);
+        if (!date || isNaN(date.getTime())) return dateStr;
+        var y = date.getFullYear();
+        var m = String(date.getMonth() + 1).padStart(2, '0');
+        var d = String(date.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + d;
+      }
+
+      var checkInDate = toIsoDate(formData.get("checkin"));
+      var checkOutDate = toIsoDate(formData.get("checkout"));
+
+      // Get room_id from form (dropdown values are IDs)
+      var roomId = parseInt(formData.get("room_type") || "0", 10);
+      var specialRequests = formData.get("special_requests") || "";
+
       var data = {
-        name: formData.get("name") || "",
-        email: formData.get("email") || "",
-        phone: formData.get("phone") || "",
-        checkin: formData.get("checkin") || "",
-        checkout: formData.get("checkout") || "",
-        adults: formData.get("adults") || "1",
-        children: formData.get("children") || "0",
-        room_type: formData.get("room_type") || "",
-        special_requests: formData.get("special_requests") || "",
+        room_id: roomId,
+        check_in: checkInDate,
+        check_out: checkOutDate,
+        customer_name: formData.get("name") || "",
+        customer_email: formData.get("email") || "",
+        customer_phone: formData.get("phone") || "",
+        adults: parseInt(formData.get("adults") || "1", 10),
+        children: parseInt(formData.get("children") || "0", 10),
+        special_requests: specialRequests
       };
 
       var $messageEl = $(messageEl);
       hideMessage($messageEl);
 
-      var errors = validateBookingForm(data);
+      // Validation
+      var validationData = {
+        name: data.customer_name,
+        email: data.customer_email,
+        phone: data.customer_phone,
+        checkin: formData.get("checkin"),
+        checkout: formData.get("checkout"),
+        room_type: roomId // Pass ID for validation
+      };
+
+      var errors = validateBookingForm(validationData);
       if (errors.length > 0) {
         showMessage($messageEl, errors.join(" "), true);
         return;
@@ -102,48 +173,58 @@
         submitBtn.querySelector("span").textContent = "Submitting...";
       }
 
-      fetch("api/send-booking.php", {
+      console.log('Sending booking payload:', data); // Debugging
+
+      fetch("https://demo.altairattic.net/hotel-two/api/bookings", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Requested-With": "XMLHttpRequest",
+          "Accept": "application/json"
         },
         body: JSON.stringify(data),
       })
         .then(function (response) {
-          return response.json().catch(function () {
-            return { success: false, message: "Invalid server response." };
+          return response.json().then(function (json) {
+            if (response.ok) {
+              return json;
+            }
+            // Construct detailed error message
+            var errorMsg = json.message || 'Server returned ' + response.status;
+            if (json.errors) {
+              if (typeof json.errors === 'object') {
+                var details = Object.values(json.errors).flat().join(' ');
+                errorMsg += ': ' + details;
+              } else {
+                errorMsg += ': ' + JSON.stringify(json.errors);
+              }
+            }
+            throw new Error(errorMsg);
+          }).catch(function (e) {
+            // Handle non-JSON responses or JSON parse errors
+            if (response.ok) return {};
+            throw new Error(e.message || 'Server returned ' + response.status);
           });
         })
         .then(function (result) {
-          if (result.success) {
-            showMessage(
-              $messageEl,
-              result.message ||
-                "Booking request received successfully! We will confirm your reservation via email within 24 hours.",
-              false,
-            );
-            form.reset();
-            if (typeof $ !== "undefined" && $.fn.select2) {
-              $(".select2").val(null).trigger("change");
-            }
-            if (typeof $ !== "undefined" && $.fn.datepicker) {
-              $(".datepicker").datepicker("setDate", null);
-            }
-          } else {
-            showMessage(
-              $messageEl,
-              result.message ||
-                "Sorry, something went wrong. Please try again or call us at +2347077195098.",
-              true,
-            );
+          // Success
+          showMessage(
+            $messageEl,
+            "Booking request received successfully! We will confirm your reservation via email within 24 hours.",
+            false
+          );
+          form.reset();
+          // Reset Select2 and Datepicker if they exist
+          if (typeof $ !== "undefined") {
+            if ($.fn.select2) $(".select2").val(null).trigger("change");
+            if ($.fn.datepicker) $(".datepicker").datepicker("setDate", null);
           }
         })
         .catch(function (err) {
+          console.error('Booking submission error:', err);
           showMessage(
             $messageEl,
-            "Unable to submit booking. Please check your connection or call us at +2347077195098.",
-            true,
+            err.message || "Unable to submit booking. Please check your connection or call us at +2347077195098.",
+            true
           );
         })
         .finally(function () {
